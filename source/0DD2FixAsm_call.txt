@@ -235,13 +235,13 @@ hex
 {0000}F0B5      //PUSH            {R4-R7,LR}
 {0002}0446      //MOV             R4, R0
 {0004}0D46      //MOV             R5, R1
-{0006}4669      //LDR             R6, [R0,#0x14]  //context_set_reg 5
+{0006}8669      //LDR             R6, [R0,#0x18]  //context_set_reg 6
 {0008}B600      //LSLS            R6, R6, #2
 {000A}002E      //CMP             R6, #0
 {000C}06D0      //BEQ             loc_001C
 {000E}ADEB060D  //SUB.W           SP, SP, R6
 {0012}3246      //MOV             R2, R6
-{0014}8169      //LDR             R1, [R0,#0x18]  //context_set_reg 6
+{0014}4169      //LDR             R1, [R0,#0x14]  //context_set_reg 5
 {0016}6846      //MOV             R0, SP
 {0018}0000 0000 //BLX             memcpy
 
