@@ -2,7 +2,8 @@
 0000:
 jump @hook_0DD2
 
-:get_asm_call_addr
+//The assembly code is written at the beginning, if it is written at the end of cleo, the data will not be aligned and the game will crash
+:get_asm_call_addr 
 hex
 AEF1 2D00 //SUB R0, LR, #0x2D
 F746      //MOV PC, LR
@@ -10,6 +11,8 @@ end
 
 :hook_0DD2
 gosub @Int_Operations_func
+//The static memory allocated by cleo is injected into the assembly code, which is first read from the memory and then written into the memory. 
+//The meaning of this is to turn on virtual protection when writing, because of the rigor of ARM memory access
 0DD0: 9@ = get_label_addr @get_asm_call_addr
 0DD8: 1@ = read_mem_addr 9@ size 4 add_ib 0
 9@ += 4
@@ -24,12 +27,15 @@ int 0@
 int 3@
 int 3@ = 0@
 0@ -= 0xDBA   //get 0DD2 addr {BL  asm_call}
-3@ -= 0x3D3C //get memcpy func addr
+3@ -= 0x3D3C  //get memcpy func addr
 gosub @new_asm_call
 gosub @bl
-0DD9: write_mem_addr 0@ value 1@ size 4 add_ib 0 protect 1
+//Modify the jump instruction of OP 0DD2 in Libcleo.so {BL  asm_call}
+//Jump to the newly written asm_call {BL  hook_asm_call}
+0DD9: write_mem_addr 0@ value 1@ size 4 add_ib 0 protect 1 
 end_thread
 
+//"rw" All read and write first, turn on virtual protection
 :new_asm_call
 0DD0: 8@ = get_label_addr @hook_asm_call
 gosub @rw //1
@@ -39,6 +45,7 @@ gosub @rw //4
 gosub @rw //5
 gosub @rw //6
 gosub @blx
+//Write the offset address of the memcpy function
 0DD9: write_mem_addr 8@ value 1@ size 4 add_ib 0 protect 1 //7
 8@ += 4
 gosub @rw //8
@@ -58,7 +65,7 @@ low++;
 }
 machineCode = ((0xE800 | low) << 16) | (0xF000 | high)
 */
-:blx
+:blx //Calculate the machine code of the blx jump instruction
 int 8@
 int 3@ -= 8@
 3@ -= 4
@@ -116,7 +123,7 @@ high = offset >> 12;
 low = (offset & 0x00000fff) >> 1;
 machineCode = ((0xF800 | low) << 16) | (0xF000 | high)
 */
-:bl
+:bl //Calculate the machine code of the bl jump instruction
 8@ -= 0@
 8@ -= 4
 0DD3: context_set_reg 1 value 0x007fffff
@@ -154,7 +161,7 @@ int 4@ = 3@
 0DD4: 1@ = context_get_reg 0
 return
 
-:Int_Operations_func
+:Int_Operations_func //The function of IntOperations.cleo in CLEO4
 0DD0: 10@ = get_label_addr @asm_and
 0DD8: 1@ = read_mem_addr 10@ size 4 add_ib 0
 0DD9: write_mem_addr 10@ value 1@ size 4 add_ib 0 protect 1
@@ -223,26 +230,26 @@ hex
 F7 46 //MOV   PC, LR
 end
 
-:hook_asm_call
+:hook_asm_call //Core code
 hex
 {0000}F0B5      //PUSH            {R4-R7,LR}
 {0002}0446      //MOV             R4, R0
 {0004}0D46      //MOV             R5, R1
-{0006}8669      //LDR             R6, [R0,#0x18]
+{0006}4669      //LDR             R6, [R0,#0x14]  //context_set_reg 5
 {0008}B600      //LSLS            R6, R6, #2
 {000A}002E      //CMP             R6, #0
 {000C}06D0      //BEQ             loc_001C
 {000E}ADEB060D  //SUB.W           SP, SP, R6
 {0012}3246      //MOV             R2, R6
-{0014}4169      //LDR             R1, [R0,#0x14]
+{0014}8169      //LDR             R1, [R0,#0x18]  //context_set_reg 6
 {0016}6846      //MOV             R0, SP
 {0018}0000 0000 //BLX             memcpy
 
 //loc_001C
-{001C}2068      //LDR             R0, [R4]
-{001E}6168      //LDR             R1, [R4,#4] 
-{0020}A268      //LDR             R2, [R4,#8]
-{0022}E368      //LDR             R3, [R4,#0xC]  
+{001C}2068      //LDR             R0, [R4]        //context_set_reg 0
+{001E}6168      //LDR             R1, [R4,#4]     //context_set_reg 1
+{0020}A268      //LDR             R2, [R4,#8]     //context_set_reg 2
+{0022}E368      //LDR             R3, [R4,#0xC]   //context_set_reg 3
 {0024}A847      //BLX             R5
 {0026}2060      //STR             R0, [R4]  
 {0028}B544      //ADD             SP, R6
