@@ -1,0 +1,250 @@
+{$CLEO .csa}
+0000:
+jump @hook_0DD2
+
+:get_asm_call_addr
+hex
+AEF1 2D00 //SUB R0, LR, #0x2D
+F746      //MOV PC, LR
+end
+
+:hook_0DD2
+gosub @Int_Operations_func
+0DD0: 9@ = get_label_addr @get_asm_call_addr
+0DD8: 1@ = read_mem_addr 9@ size 4 add_ib 0
+9@ += 4
+0DD8: 2@ = read_mem_addr 9@ size 2 add_ib 0
+0DD9: write_mem_addr 9@ value 2@ size 2 add_ib 0 protect 1
+9@ -= 4
+0DD9: write_mem_addr 9@ value 1@ size 4 add_ib 0 protect 1
+9@ += 1
+0DD2: context_call_func 9@
+0DD4: 0@ = context_get_reg 0
+int 0@
+int 3@
+int 3@ = 0@
+0@ -= 0xDBA   //get 0DD2 addr {BL  asm_call}
+3@ -= 0x3D3C //get memcpy func addr
+gosub @new_asm_call
+gosub @bl
+0DD9: write_mem_addr 0@ value 1@ size 4 add_ib 0 protect 1
+end_thread
+
+:new_asm_call
+0DD0: 8@ = get_label_addr @hook_asm_call
+gosub @rw //1
+gosub @rw //2
+gosub @rw //3
+gosub @rw //4
+gosub @rw //5
+gosub @rw //6
+gosub @blx
+0DD9: write_mem_addr 8@ value 1@ size 4 add_ib 0 protect 1 //7
+8@ += 4
+gosub @rw //8
+gosub @rw //9
+gosub @rw //10
+gosub @rw //11
+0DD0: 8@ = get_label_addr @hook_asm_call
+return
+
+/* blx
+offset = dstAddr - srcAddr;
+offset = (offset -4) & 0x007fffff;
+high = offset >> 12;
+low = (offset & 0x00000fff) >> 1;
+if(low%2 != 0) {
+low++;
+}
+machineCode = ((0xE800 | low) << 16) | (0xF000 | high)
+*/
+:blx
+int 8@
+int 3@ -= 8@
+3@ -= 4
+0DD3: context_set_reg 1 value 0x007fffff
+0DD3: context_set_reg 0 value 3@
+0DD2: context_call_func 10@
+0DD4: 3@ = context_get_reg 0
+int 4@ = 3@
+0DD3: context_set_reg 1 value 12
+0DD3: context_set_reg 0 value 4@
+0DD2: context_call_func 14@
+0DD4: 4@ = context_get_reg 0 //high
+0DD3: context_set_reg 1 value 0x00000fff
+0DD3: context_set_reg 0 value 3@
+0DD2: context_call_func 10@
+0DD4: 3@ = context_get_reg 0
+0DD3: context_set_reg 1 value 1
+0DD3: context_set_reg 0 value 3@
+0DD2: context_call_func 14@
+0DD4: 5@ = context_get_reg 0 //low
+int 5@
+int 6@ = 5@
+int 7@ = 5@
+6@ /= 2
+6@ *= 2
+int 7@ -= 6@
+if
+ 7@ <> 0
+jf @blxx
+5@ += 1 //low
+
+:blxx
+0DD3: context_set_reg 1 value 5@
+0DD3: context_set_reg 0 value 0xE800
+0DD2: context_call_func 11@
+0DD4: 5@ = context_get_reg 0
+0DD3: context_set_reg 1 value 16
+0DD3: context_set_reg 0 value 5@
+0DD2: context_call_func 15@
+0DD4: 6@ = context_get_reg 0
+0DD3: context_set_reg 1 value 4@
+0DD3: context_set_reg 0 value 0xF000
+0DD2: context_call_func 11@
+0DD4: 7@ = context_get_reg 0
+0DD3: context_set_reg 1 value 7@
+0DD3: context_set_reg 0 value 6@
+0DD2: context_call_func 11@
+0DD4: 1@ = context_get_reg 0
+return
+
+/*bl
+offset = dstAddr - srcAddr;
+offset = (offset -4) & 0x007fffff;
+high = offset >> 12;
+low = (offset & 0x00000fff) >> 1;
+machineCode = ((0xF800 | low) << 16) | (0xF000 | high)
+*/
+:bl
+8@ -= 0@
+8@ -= 4
+0DD3: context_set_reg 1 value 0x007fffff
+0DD3: context_set_reg 0 value 8@
+0DD2: context_call_func 10@
+0DD4: 3@ = context_get_reg 0
+int 4@ = 3@
+0DD3: context_set_reg 1 value 12
+0DD3: context_set_reg 0 value 4@
+0DD2: context_call_func 14@
+0DD4: 4@ = context_get_reg 0 //high
+0DD3: context_set_reg 1 value 0x00000fff
+0DD3: context_set_reg 0 value 3@
+0DD2: context_call_func 10@
+0DD4: 3@ = context_get_reg 0
+0DD3: context_set_reg 1 value 1
+0DD3: context_set_reg 0 value 3@
+0DD2: context_call_func 14@
+0DD4: 5@ = context_get_reg 0 //low
+0DD3: context_set_reg 1 value 5@
+0DD3: context_set_reg 0 value 0xF800
+0DD2: context_call_func 11@
+0DD4: 5@ = context_get_reg 0
+0DD3: context_set_reg 1 value 16
+0DD3: context_set_reg 0 value 5@
+0DD2: context_call_func 15@
+0DD4: 6@ = context_get_reg 0
+0DD3: context_set_reg 1 value 4@
+0DD3: context_set_reg 0 value 0xF000
+0DD2: context_call_func 11@
+0DD4: 7@ = context_get_reg 0
+0DD3: context_set_reg 1 value 7@
+0DD3: context_set_reg 0 value 6@
+0DD2: context_call_func 11@
+0DD4: 1@ = context_get_reg 0
+return
+
+:Int_Operations_func
+0DD0: 10@ = get_label_addr @asm_and
+0DD8: 1@ = read_mem_addr 10@ size 4 add_ib 0
+0DD9: write_mem_addr 10@ value 1@ size 4 add_ib 0 protect 1
+10@ += 1
+0DD0: 11@ = get_label_addr @asm_or
+0DD8: 1@ = read_mem_addr 11@ size 4 add_ib 0
+0DD9: write_mem_addr 11@ value 1@ size 4 add_ib 0 protect 1
+11@ += 1
+0DD0: 12@ = get_label_addr @asm_xor
+0DD8: 1@ = read_mem_addr 12@ size 4 add_ib 0
+0DD9: write_mem_addr 12@ value 1@ size 4 add_ib 0 protect 1
+12@ += 1
+0DD0: 13@ = get_label_addr @asm_not
+0DD8: 1@ = read_mem_addr 13@ size 4 add_ib 0
+0DD9: write_mem_addr 13@ value 1@ size 4 add_ib 0 protect 1
+13@ += 1
+0DD0: 14@ = get_label_addr @asm_shr
+0DD8: 1@ = read_mem_addr 14@ size 4 add_ib 0
+0DD9: write_mem_addr 14@ value 1@ size 4 add_ib 0 protect 1
+14@ += 1
+0DD0: 15@ = get_label_addr @asm_shl
+0DD8: 1@ = read_mem_addr 15@ size 4 add_ib 0
+0DD9: write_mem_addr 15@ value 1@ size 4 add_ib 0 protect 1
+15@ += 1
+return
+
+:rw
+0DD8: 1@ = read_mem_addr 8@ size 4 add_ib 0
+0DD9: write_mem_addr 8@ value 1@ size 4 add_ib 0 protect 1
+8@ += 4
+return
+
+:asm_and
+hex
+08 40 //ANDS  R0, R1
+F7 46 //MOV   PC, LR
+end
+
+:asm_or
+hex
+08 43 //ORRS  R0, R1
+F7 46 //MOV   PC, LR
+end
+
+:asm_xor
+hex
+48 40 //EORS  R0, R1
+F7 46 //MOV   PC, LR
+end
+
+:asm_not
+hex
+C8 43 //MVNS  R0, R1
+F7 46 //MOV   PC, LR
+end
+
+:asm_shr
+hex
+C8 40 //LSRS  R0, R1
+F7 46 //MOV   PC, LR
+end
+
+:asm_shl
+hex
+88 40 //LSLS  R0, R1
+F7 46 //MOV   PC, LR
+end
+
+:hook_asm_call
+hex
+{0000}F0B5      //PUSH            {R4-R7,LR}
+{0002}0446      //MOV             R4, R0
+{0004}0D46      //MOV             R5, R1
+{0006}0669      //LDR             R6, [R0,#0x10]
+{0008}B600      //LSLS            R6, R6, #2
+{000A}002E      //CMP             R6, #0
+{000C}06D0      //BEQ             loc_001C
+{000E}ADEB060D  //SUB.W           SP, SP, R6
+{0012}3246      //MOV             R2, R6
+{0014}4169      //LDR             R1, [R0,#0x14]
+{0016}6846      //MOV             R0, SP
+{0018}0000 0000 //BLX             memcpy
+
+//loc_001C
+{001C}2068      //LDR             R0, [R4]
+{001E}6168      //LDR             R1, [R4,#4] 
+{0020}A268      //LDR             R2, [R4,#8]
+{0022}E368      //LDR             R3, [R4,#0xC]  
+{0024}A847      //BLX             R5
+{0026}2060      //STR             R0, [R4]  
+{0028}B544      //ADD             SP, R6
+{002A}F0BD      //POP             {R4-R7,PC}
+end
