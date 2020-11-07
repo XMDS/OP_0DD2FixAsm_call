@@ -9,10 +9,80 @@ AEF1 2D00 //SUB R0, LR, #0x2D
 F746      //MOV PC, LR
 end
 
+:asm_and
+hex
+08 40 //ANDS  R0, R1
+F7 46 //MOV   PC, LR
+end
+
+:asm_or
+hex
+08 43 //ORRS  R0, R1
+F7 46 //MOV   PC, LR
+end
+
+:asm_xor
+hex
+48 40 //EORS  R0, R1
+F7 46 //MOV   PC, LR
+end
+
+:asm_not
+hex
+C0 43 //MVNS  R0, R0
+F7 46 //MOV   PC, LR
+end
+
+:asm_shr
+hex
+C8 40 //LSRS  R0, R1
+F7 46 //MOV   PC, LR
+end
+
+:asm_shl
+hex
+88 40 //LSLS  R0, R1
+F7 46 //MOV   PC, LR
+end
+
+:hook_asm_call //Core code
+hex
+{0000}F0B5	    //PUSH            {R4-R7,LR}
+{0002}0446	    //MOV             R4, R0         
+{0004}0D46	    //MOV             R5, R1
+{0008}1026      //MOVS            R6, #0x10     //It starts from R4
+{000A}0027      //MOVS            R7, #0
+{0006}AEB0      //SUB             SP, #0xB8     //The maximum setting of the stack is 46 parameters
+
+//loc_000C
+{000C}B82F      //CMP             R7, #0xB8
+{000E}05D0      //BEQ             loc_001C
+{0010}8159      //LDR             R1, [R0, R6]  //Read parameters from reg in 0DD3 in cleo. It starts from R4
+{0012}4DF80710  //STR.W           R1, [SP, R7]  //Write the extracted parameters to the stack
+{0016}0436      //ADDS            R6, #4        //Next parameter
+{0018}0437      //ADDS            R7, #4        //Stack +4 to save the next parameter
+{001A}F7E7      //B               loc_000C
+
+//loc_001C        
+{001C}2068      //LDR             R0, [R4]        //context_set_reg 0
+{001E}6168      //LDR             R1, [R4,#4]     //context_set_reg 1
+{0020}A268      //LDR             R2, [R4,#8]     //context_set_reg 2
+{0022}E368      //LDR             R3, [R4,#0xC]   //context_set_reg 3
+{0024}A847      //BLX             R5              //call func 
+{0026}2060      //STR             R0, [R4]  
+{0028}2EB0      //ADD             SP, #0xB8
+{002A}F0BD      //POP             {R4-R7,PC}
+end
+
 :hook_0DD2
+int 0@
+int 3@
+int 4@ 
+int 8@
 gosub @Int_Operations_func
 //The static memory allocated by cleo is injected into the assembly code, which is first read from the memory and then written into the memory. 
 //The meaning of this is to turn on virtual protection when writing, because of the rigor of ARM memory access
+0DD0: 8@ = get_label_addr @hook_asm_call
 0DD0: 9@ = get_label_addr @get_asm_call_addr
 0DD8: 1@ = read_mem_addr 9@ size 4 add_ib 0
 9@ += 4
@@ -23,11 +93,8 @@ gosub @Int_Operations_func
 9@ += 1
 0DD2: context_call_func 9@
 0DD4: 0@ = context_get_reg 0
-int 0@
-int 3@
-int 3@ = 0@
 0@ -= 0xDBA   //get 0DD2 addr {BL  asm_call}
-3@ -= 0x3D3C  //get memcpy func addr
+3@ = 0
 gosub @new_asm_call
 gosub @bl
 //Modify the jump instruction of OP 0DD2 in Libcleo.so {BL  asm_call}
@@ -37,22 +104,58 @@ end_thread
 
 //"rw" All read and write first, turn on virtual protection
 :new_asm_call
-0DD0: 8@ = get_label_addr @hook_asm_call
-gosub @rw //1
-gosub @rw //2
-gosub @rw //3
-gosub @rw //4
-gosub @rw //5
-gosub @rw //6
-gosub @blx
-//Write the offset address of the memcpy function
-0DD9: write_mem_addr 8@ value 1@ size 4 add_ib 0 protect 1 //7
+if
+ 3@ <= 11
+jf @return 
+0DD8: 1@ = read_mem_addr 8@ size 4 add_ib 0
+0DD9: write_mem_addr 8@ value 1@ size 4 add_ib 0 protect 1
 8@ += 4
-gosub @rw //8
-gosub @rw //9
-gosub @rw //10
-gosub @rw //11
-0DD0: 8@ = get_label_addr @hook_asm_call
+3@ += 1
+jump @new_asm_call
+
+/*bl
+offset = dstAddr - srcAddr;
+offset = (offset -4) & 0x007fffff;
+high = offset >> 12;
+low = (offset & 0x00000fff) >> 1;
+machineCode = ((0xF800 | low) << 16) | (0xF000 | high)
+*/
+:bl //Calculate the machine code of the bl jump instruction
+8@ -= 0@
+8@ -= 4
+0DD3: context_set_reg 1 value 0x007fffff
+0DD3: context_set_reg 0 value 8@
+0DD2: context_call_func 10@
+0DD4: 3@ = context_get_reg 0
+4@ = 3@
+0DD3: context_set_reg 1 value 12
+0DD3: context_set_reg 0 value 4@
+0DD2: context_call_func 14@
+0DD4: 4@ = context_get_reg 0 //high
+0DD3: context_set_reg 1 value 0x00000fff
+0DD3: context_set_reg 0 value 3@
+0DD2: context_call_func 10@
+0DD4: 3@ = context_get_reg 0
+0DD3: context_set_reg 1 value 1
+0DD3: context_set_reg 0 value 3@
+0DD2: context_call_func 14@
+0DD4: 5@ = context_get_reg 0 //low
+0DD3: context_set_reg 1 value 5@
+0DD3: context_set_reg 0 value 0xF800
+0DD2: context_call_func 11@
+0DD4: 5@ = context_get_reg 0
+0DD3: context_set_reg 1 value 16
+0DD3: context_set_reg 0 value 5@
+0DD2: context_call_func 15@
+0DD4: 6@ = context_get_reg 0
+0DD3: context_set_reg 1 value 4@
+0DD3: context_set_reg 0 value 0xF000
+0DD2: context_call_func 11@
+0DD4: 7@ = context_get_reg 0
+0DD3: context_set_reg 1 value 7@
+0DD3: context_set_reg 0 value 6@
+0DD2: context_call_func 11@
+0DD4: 1@ = context_get_reg 0
 return
 
 /* blx
@@ -65,6 +168,7 @@ low++;
 }
 machineCode = ((0xE800 | low) << 16) | (0xF000 | high)
 */
+/*
 :blx //Calculate the machine code of the blx jump instruction
 int 8@
 int 3@ -= 8@
@@ -115,51 +219,7 @@ jf @blxx
 0DD2: context_call_func 11@
 0DD4: 1@ = context_get_reg 0
 return
-
-/*bl
-offset = dstAddr - srcAddr;
-offset = (offset -4) & 0x007fffff;
-high = offset >> 12;
-low = (offset & 0x00000fff) >> 1;
-machineCode = ((0xF800 | low) << 16) | (0xF000 | high)
 */
-:bl //Calculate the machine code of the bl jump instruction
-8@ -= 0@
-8@ -= 4
-0DD3: context_set_reg 1 value 0x007fffff
-0DD3: context_set_reg 0 value 8@
-0DD2: context_call_func 10@
-0DD4: 3@ = context_get_reg 0
-int 4@ = 3@
-0DD3: context_set_reg 1 value 12
-0DD3: context_set_reg 0 value 4@
-0DD2: context_call_func 14@
-0DD4: 4@ = context_get_reg 0 //high
-0DD3: context_set_reg 1 value 0x00000fff
-0DD3: context_set_reg 0 value 3@
-0DD2: context_call_func 10@
-0DD4: 3@ = context_get_reg 0
-0DD3: context_set_reg 1 value 1
-0DD3: context_set_reg 0 value 3@
-0DD2: context_call_func 14@
-0DD4: 5@ = context_get_reg 0 //low
-0DD3: context_set_reg 1 value 5@
-0DD3: context_set_reg 0 value 0xF800
-0DD2: context_call_func 11@
-0DD4: 5@ = context_get_reg 0
-0DD3: context_set_reg 1 value 16
-0DD3: context_set_reg 0 value 5@
-0DD2: context_call_func 15@
-0DD4: 6@ = context_get_reg 0
-0DD3: context_set_reg 1 value 4@
-0DD3: context_set_reg 0 value 0xF000
-0DD2: context_call_func 11@
-0DD4: 7@ = context_get_reg 0
-0DD3: context_set_reg 1 value 7@
-0DD3: context_set_reg 0 value 6@
-0DD2: context_call_func 11@
-0DD4: 1@ = context_get_reg 0
-return
 
 :Int_Operations_func //The function of IntOperations.cleo in CLEO4
 0DD0: 10@ = get_label_addr @asm_and
@@ -188,49 +248,11 @@ return
 15@ += 1
 return
 
-:rw
-0DD8: 1@ = read_mem_addr 8@ size 4 add_ib 0
-0DD9: write_mem_addr 8@ value 1@ size 4 add_ib 0 protect 1
-8@ += 4
+:return
+0DD0: 8@ = get_label_addr @hook_asm_call
 return
 
-:asm_and
-hex
-08 40 //ANDS  R0, R1
-F7 46 //MOV   PC, LR
-end
-
-:asm_or
-hex
-08 43 //ORRS  R0, R1
-F7 46 //MOV   PC, LR
-end
-
-:asm_xor
-hex
-48 40 //EORS  R0, R1
-F7 46 //MOV   PC, LR
-end
-
-:asm_not
-hex
-C8 43 //MVNS  R0, R1
-F7 46 //MOV   PC, LR
-end
-
-:asm_shr
-hex
-C8 40 //LSRS  R0, R1
-F7 46 //MOV   PC, LR
-end
-
-:asm_shl
-hex
-88 40 //LSLS  R0, R1
-F7 46 //MOV   PC, LR
-end
-
-:hook_asm_call //Core code
+/*:hook_asm_call //The old code is not used now
 hex
 {0000}F0B5      //PUSH            {R4-R7,LR}
 {0002}0446      //MOV             R4, R0
@@ -255,3 +277,4 @@ hex
 {0028}B544      //ADD             SP, R6
 {002A}F0BD      //POP             {R4-R7,PC}
 end
+*/
