@@ -2,8 +2,9 @@
 0000:
 jump @hook_0DD2
 
-//The assembly code is written at the beginning, if it is written at the end of cleo, the data will not be aligned and the game will crash
-:get_asm_call_addr 
+//The assembly code is written at the beginning, if it is written at the end of cleo, the data will not be aligned and the game will crash.
+ 
+:get_asm_call_addr //Thanks for the help of k 
 hex
 AEF1 2D00 //SUB R0, LR, #0x2D
 F746      //MOV PC, LR
@@ -45,11 +46,11 @@ hex
 F7 46 //MOV   PC, LR
 end
 
-:hook_asm_call //Core code
+:hook_asm_call //CoreCode
 hex
-{0000}F0B5	    //PUSH            {R4-R7,LR}
-{0002}0446	    //MOV             R4, R0         
-{0004}0D46	    //MOV             R5, R1
+{0000}F0B5      //PUSH            {R4-R7,LR}
+{0002}0446      //MOV             R4, R0         
+{0004}0D46      //MOV             R5, R1
 {0008}1026      //MOVS            R6, #0x10     //It starts from R4
 {000A}0027      //MOVS            R7, #0
 {0006}AEB0      //SUB             SP, #0xB8     //The maximum setting of the stack is 46 parameters
@@ -80,17 +81,17 @@ int 3@
 int 4@ 
 int 8@
 gosub @Int_Operations_func
-//The static memory allocated by cleo is injected into the assembly code, which is first read from the memory and then written into the memory. 
-//The meaning of this is to turn on virtual protection when writing, because of the rigor of ARM memory access
 0DD0: 8@ = get_label_addr @hook_asm_call
 0DD0: 9@ = get_label_addr @get_asm_call_addr
+//The static memory allocated by cleo is injected into the assembly code, which is first read from the memory and then written into the memory. 
+//The meaning of this is to turn on virtual protection when writing, because of the rigor of ARM memory access
 0DD8: 1@ = read_mem_addr 9@ size 4 add_ib 0
 9@ += 4
 0DD8: 2@ = read_mem_addr 9@ size 2 add_ib 0
 0DD9: write_mem_addr 9@ value 2@ size 2 add_ib 0 protect 1
 9@ -= 4
 0DD9: write_mem_addr 9@ value 1@ size 4 add_ib 0 protect 1
-9@ += 1
+9@ += 1 //Because it is a thumb instruction, the address is +1
 0DD2: context_call_func 9@
 0DD4: 0@ = context_get_reg 0
 0@ -= 0xDBA   //get 0DD2 addr {BL  asm_call}
