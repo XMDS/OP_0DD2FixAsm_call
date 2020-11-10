@@ -3,6 +3,8 @@
 ### what is this ?  
 `0DD2FixAsm_call`is a CLEO script for Android GTA. It fixes the problem of calling function of Android CLEO opcode 0DD2. You can now call functions with more than 4 parameters. Now, when you write cleo, you can use R4 to set the fifth parameter, and so on, you can use up to R49, and a total of 50 parameter settings (R0--R49) are supported.
 This cleo supports any version of Android GTASA/GTAVC/GTA3 games.  
+Please do not modify the file name of this cleo casually, because it will cause the "byte unaligned" error and crash the game.
+
 
 ### Detailed description(Please be sure to read)
 When writing an Android CLEO script, if you need to call a function to complete some functions, there will be the following code:
@@ -27,7 +29,7 @@ For functions with more than 4 parameters, the first 4 parameters are still pass
 However, [AlexanderBlade](https://gtaforums.com/profile/182287-alexander-blade/) did not implement stack transfer parameters for the 0DD2 opcode when making [Android CLEOLibrary](https://gtaforums.com/topic/663125-android-cleo-android/). This led us to call functions in Android cleo scripts, only to call functions with parameters less than or equal to 4, and for parameters greater than 4 functions. After we call, the following parameters are invalid. Before that, we can only call functions with parameters less than or equal to 4.  
 Now the cleo script `0DD2FixAsm_call` rewrites the code of `Asm_call` and injects it into the 0DD2 opcode of Libcleo.so. And solved the problem.
 
-### Help and installation
+### Help
 You can download this cleo here, it is open source.
 It also contains two test scripts(GTASA)    
 Both test scripts call functions, one with 6 parameters and the other with 10 parameters:      
@@ -35,4 +37,7 @@ Both test scripts call functions, one with 6 parameters and the other with 10 pa
 [draw_shadow](https://github.com/XMDS/OP_0DD2FixAsm_call/blob/master/source/Test%20script/draw_shadow.txt)(A purple halo is created under the player’s feet)  
 
 If your cleo needs to call a function with more than 4 parameters, you must use my cleo script to support the game. Even if you don't use a multi-parameter function, it can run perfectly in the game without affecting the game.  
-I suggest that when writing and publishing your cleo, please write a description and attach my cleo script.
+I suggest that when writing and publishing your cleo, please write a description and attach my cleo script.  
+
+If you have any crashes in the game test, you can submit it to me.
+I recommend installing [fastman92_limit_adjuster](https://gtaforums.com/topic/733982-fastman92-limit-adjuster/) in your game. When writing a cleo script, the game crashes, you can check the log file to understand the cause of the error.
