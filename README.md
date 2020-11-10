@@ -29,7 +29,8 @@ Now the cleo script `0DD2FixAsm_call` rewrites the code of `Asm_call` and inject
 
 ### Help and installation
 You can download this cleo here, it is open source.
-It also contains two test scripts(GTASA):   
+It also contains two test scripts(GTASA)    
+Both test scripts call functions, one with 6 parameters and the other with 10 parameters:      
 [box_hello world](https://github.com/XMDS/OP_0DD2FixAsm_call/blob/master/source/Test%20script/box_hello%20world.txt)(10 seconds after entering the game, the black box in the upper left corner shows "hello world")  
 [draw_shadow](https://github.com/XMDS/OP_0DD2FixAsm_call/blob/master/source/Test%20script/draw_shadow.txt)(A purple halo is created under the player’s feet)  
 
