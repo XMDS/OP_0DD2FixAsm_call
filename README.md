@@ -1,7 +1,7 @@
 # OP_0DD2FixAsm_call  
 ## English  
 ### what is this ?  
-`0DD2FixAsm_call`is a CLEO script for Android GTA. It fixes the problem of calling function of Android CLEO opcode 0DD2. You can now call functions with more than 4 parameters. Now, when you write cleo, you can use R4 to set the fifth parameter, and so on, you can use up to R49, and a total of 50 parameter settings (R0--R49) are supported.
+`0DD2FixAsm_call` is a CLEO script for Android GTA. It fixes the problem of calling function of Android CLEO opcode 0DD2. You can now call functions with more than 4 parameters. Now, when you write cleo, you can use R4 to set the fifth parameter, and so on, you can use up to R49, and a total of 50 parameter settings (R0--R49) are supported.
 This cleo supports any version of Android GTASA/GTAVC/GTA3 games.  
 Please do not modify the file name of this cleo casually, because it will cause the "byte unaligned" error and crash the game.
 
