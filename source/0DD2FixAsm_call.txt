@@ -94,7 +94,20 @@ gosub @Int_Operations_func
 9@ += 1 //Because it is a thumb instruction, the address is +1
 0DD2: context_call_func 9@
 0DD4: 0@ = context_get_reg 0
+0@ -= 2
+0DD8: 2@ = read_mem_addr 0@ size 2 add_ib 0
+if
+ 2@ == 0xFFFF
+jf @NewCleoVersion
+0@ += 2
 0@ -= 0xDBA   //get 0DD2 addr {BL  asm_call}
+jump @W_hook_0DD2
+
+:NewCleoVersion //Version: 2.0.1//Date: Apr 2021
+0@ += 2
+0@ += 0x27C6 //get 0DD2 addr {BL  asm_call}
+
+:W_hook_0DD2
 3@ = 0
 gosub @new_asm_call
 gosub @bl

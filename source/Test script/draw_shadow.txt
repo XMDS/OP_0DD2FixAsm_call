@@ -1,45 +1,119 @@
 {$CLEO .csa}
 0000:
-0DD0: 36@ = get_label_addr @_ZN8CShadows23StoreShadowToBeRenderedEhP7CVectorffffshhh 
-0DD1: 36@ = get_func_addr_by_cstr_name 36@
-//StoreShadowToBeRendered(unsigned char shadowTextureType, CVector* posn, float frontX, float frontY, float sideX, float sideY, short intensity, unsigned char red, unsigned char green, unsigned char blue)
+const
+ SCP = $PLAYER_ACTOR
+ ShadowTextureType = 3
+ FrontX = 1.0
+ FrontY = 0.0
+ SideX = 0.0
+ SideY = -1.0
+ Intensity = 255
+ R = 255
+ G = 0
+ B = 255
+end
 
-:1
+int v
+int StoreShadowToBeRendered
+int CVector
+int memmove
+int a
+int c
+int d
+float x
+float y
+float z
+float gz 
+
+0DD6: v = get_game_version
+if
+ v == 13 //SA1.08
+then
+0DD0: memmove = get_label_addr @memmove 
+0DD1: memmove = get_func_addr_by_cstr_name memmove
+end
+
+if
+ v == 17 //SA2.00
+then 
+//0DD0: memmove = get_label_addr @__aeabi_memmove 
+//0DD1: memmove = get_func_addr_by_cstr_name memmove
+0DD7: memmove = get_image_base
+memmove += 0x0019DEE4
+end 
+
+:Fix
+0DD0: a = get_label_addr @coords
+0DD0: c = get_label_addr @coords
+0DD0: d = get_label_addr @coords
+//addr+4-£¨addr%4£©
+a /= 4
+a *= 4
+c -= a
+if
+ c <> 0
+jf @DrawShadow
+0DD0: CVector = get_label_addr @coords
+CVector += 4
+CVector -= c
+//void *memmove( void* dest, const void* src, size_t count );
+0DD3: context_set_reg 2 value 12 //size
+0DD3: context_set_reg 1 value d //src
+0DD3: context_set_reg 0 value CVector //dest 
+0DD2: context_call_func memmove
+
+//StoreShadowToBeRendered(unsigned char shadowTextureType, CVector* posn, float frontX, float frontY, float sideX, float sideY, short intensity, unsigned char red, unsigned char green, unsigned char blue)
+0DD0: StoreShadowToBeRendered = get_label_addr @_ZN8CShadows23StoreShadowToBeRenderedEhP7CVectorffffshhh 
+0DD1: StoreShadowToBeRendered = get_func_addr_by_cstr_name StoreShadowToBeRendered
+
+:DrawShadow
 wait 0
 if
-0256:   player $PLAYER_CHAR defined 
-jf @1
-00A0: store_actor $PLAYER_ACTOR position_to 1@ 2@ 3@
-02CE: 5@ = ground_z_at 1@ 2@ 3@ 
-5@ += 0.03
-0DD0: 30@ = get_label_addr @coords
-0DD9: write_mem_addr 30@ value 1@ size 4 add_ib 0 protect 1
-30@ += 4
-0DD9: write_mem_addr 30@ value 2@ size 4 add_ib 0 protect 1
-30@ += 4
-0DD9: write_mem_addr 30@ value 5@ size 4 add_ib 0 protect 1
-30@ -= 8
-0DD3: context_set_reg 9 value 255   //B
-0DD3: context_set_reg 8 value 0     //G
-0DD3: context_set_reg 7 value 255   //R
-0DD3: context_set_reg 6 value 200  //intensity
-0DD3: context_set_reg 5 value -1.0   //sideY
-0DD3: context_set_reg 4 value 0.0   //sideX
-0DD3: context_set_reg 3 value 0.0 //frontY
-0DD3: context_set_reg 2 value 1.0 //frontX
-0DD3: context_set_reg 1 value 30@ //CVector* posn
-0DD3: context_set_reg 0 value 3   //shadowTextureType
-0DD2: context_call_func 36@
-jump @1
+  player.IsPlaying(0) 
+jf @DrawShadow
+char.GetCoordinates(SCP, x, y, z)
+World.GetGroundZFor3DCoord(gz, x, y, z)
+gz += 0.03
+Memory.Write(CVector, x, 4, 0, 1)
+CVector += 4
+Memory.Write(CVector, y, 4, 0, 1)
+CVector += 4
+Memory.Write(CVector, gz, 4, 0, 1)
+CVector -= 8
+0DD3: context_set_reg 9 value B
+0DD3: context_set_reg 8 value G
+0DD3: context_set_reg 7 value R
+0DD3: context_set_reg 6 value Intensity
+0DD3: context_set_reg 5 value SideY
+0DD3: context_set_reg 4 value SideX
+0DD3: context_set_reg 3 value FrontY
+0DD3: context_set_reg 2 value FrontX
+0DD3: context_set_reg 1 value CVector
+0DD3: context_set_reg 0 value ShadowTextureType
+0DD2: context_call_func StoreShadowToBeRendered
+jump @DrawShadow
+
+:memmove
+hex
+ "memmove" 00
+end
+
+/*
+:__aeabi_memmove
+hex
+ "__aeabi_memmove" 00
+end
+*/
+
+:_ZN8CShadows23StoreShadowToBeRenderedEhP7CVectorffffshhh
+hex
+ "_ZN8CShadows23StoreShadowToBeRenderedEhP7CVectorffffshhh" 00
+end
 
 :coords
 hex
 00 00 00 00 //x
 00 00 00 00 //y
 00 00 00 00 //z
-end
-
-:_ZN8CShadows23StoreShadowToBeRenderedEhP7CVectorffffshhh
-hex
- "_ZN8CShadows23StoreShadowToBeRenderedEhP7CVectorffffshhh" 00
+00 00 00    //+3 byte
 end
