@@ -46,7 +46,7 @@ end
 0DD0: a = get_label_addr @coords
 0DD0: c = get_label_addr @coords
 0DD0: d = get_label_addr @coords
-//addr+4-£¨addr%4£©
+//addr+4-(addr%4)
 a /= 4
 a *= 4
 c -= a
